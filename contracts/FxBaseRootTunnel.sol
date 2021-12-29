@@ -63,7 +63,7 @@ contract FxBaseRootTunnel is ERC20, Ownable {
         fxRoot = IFxStateSender(_fxRoot);
     }
 
-    uint256 constant _totalSupply = 1000000000 * 10 ** 18;
+    uint256 _totalSupply = 1000000000 * 10 ** 18;
     string constant _name = "Safle";
     string constant _symbol = "SAFLE";
 
@@ -184,6 +184,7 @@ contract FxBaseRootTunnel is ERC20, Ownable {
 
     function burnTokens(uint256 amount) external returns (bool) {
         bytes memory data = abi.encode(msg.sender, amount);
+        _totalSupply = _totalSupply.sub(amount);
         _sendMessageToChild(data);
         
         return true;
