@@ -16,6 +16,11 @@ interface IFxStateSender {
     function sendMessageToChild(address _receiver, bytes calldata _data) external;
 }
 
+interface SafleToken {
+    function burn(address account, uint256 amount) external;
+    function mint(address account, uint256 amount) external;
+}
+
 contract ICheckpointManager {
     struct HeaderBlock {
         bytes32 root;
@@ -32,7 +37,7 @@ contract ICheckpointManager {
     mapping(uint256 => HeaderBlock) public headerBlocks;
 }
 
-contract FxBaseRootTunnel is ERC20, Ownable {
+contract FxBaseRootTunnel {
     using RLPReader for RLPReader.RLPItem;
     using Merkle for bytes32;
     using ExitPayloadReader for bytes;
@@ -40,10 +45,6 @@ contract FxBaseRootTunnel is ERC20, Ownable {
     using ExitPayloadReader for ExitPayloadReader.Log;
     using ExitPayloadReader for ExitPayloadReader.LogTopics;
     using ExitPayloadReader for ExitPayloadReader.Receipt;
-
-    using SafeERC20 for IERC20;
-    // address of the ERC20 token
-    IERC20 private _token;
 
     // keccak256(MessageSent(bytes))
     bytes32 public constant SEND_MESSAGE_EVENT_SIG = 0x8c5261668696ce22758910d05bab8f186d6eb247ceac2af2e82c7dc17669b036;
@@ -55,126 +56,17 @@ contract FxBaseRootTunnel is ERC20, Ownable {
     // child tunnel contract which receives and sends messages
     address public fxChildTunnel;
 
+    // state sender contract
+    SafleToken public token;
+
     // storage to avoid duplicate exits
     mapping(bytes32 => bool) public processedExits;
 
-    constructor(address _checkpointManager, address _fxRoot)ERC20(_name, _symbol) {
+    constructor(address _checkpointManager, address _fxRoot, address _token) {
         checkpointManager = ICheckpointManager(_checkpointManager);
         fxRoot = IFxStateSender(_fxRoot);
+        token = SafleToken(_token);
     }
-
-    uint256 _totalSupply = 1000000000 * 10 ** 18;
-    string constant _name = "Safle";
-    string constant _symbol = "SAFLE";
-
-    // Allowance amounts on behalf of others
-    mapping (address => mapping (address => uint256)) private allowances;
-    
-    using SafeMath for uint256;
-    
-    /// @notice This function is used to revoke the admin access. The owner address with be set to 0x00..
-    function revokeAdminAccess() public onlyOwner {
-        return renounceOwnership();
-    }
-
-    /**
-     * @notice Transfer `amount` tokens from `msg.sender` to `recepient`
-     * @param recepient The address of the destination account
-     * @param amount The number of tokens to transfer
-     * @return Whether or not the transfer succeeded
-     */
-    function transfer(address recepient, uint256 amount) override public returns (bool) {
-        _transfer(msg.sender, recepient, amount);
-        return true;
-    }
-
-    /**
-     * @notice Transfer `amount` tokens from `src` to `dst`
-     * @param src The address of the source account
-     * @param dst The address of the destination account
-     * @param amount The number of tokens to transfer
-     * @return Whether or not the transfer succeeded
-     */
-    function transferFrom(address src, address dst, uint amount) override public returns (bool) {
-        uint256 currentAllowance = allowances[src][_msgSender()];
-        require(currentAllowance >= amount, "ERC20: transfer amount exceeds allowance");
-        unchecked {
-            _approve(src, _msgSender(), currentAllowance - amount);
-        }
-
-        _transfer(src, dst, amount);
-
-        return true;
-    }
-
-    /**
-     * @notice Approve the passed address to spend the specified amount of tokens on behalf of msg.sender.
-     * @param spender The address of the spending account
-     * @param amount The number of tokens for allowance
-     * @return Whether or not the approval succeeded
-     */
-    function approve(address spender, uint256 amount) public virtual override returns (bool) {
-        _approve(_msgSender(), spender, amount);
-        return true;
-    }
-
-    function _approve(
-        address owner,
-        address spender,
-        uint256 amount
-    ) override internal {
-        require(owner != address(0), "ERC20: approve from the zero address");
-        require(spender != address(0), "ERC20: approve to the zero address");
-
-        allowances[owner][spender] = amount;
-        emit Approval(owner, spender, amount);
-    }
-
-    /// returns the allowance for a spender
-    function allowance(address owner, address spender) public view virtual override returns (uint256) {
-        return allowances[owner][spender];
-    }
-
-    /**
-     * @notice increase the spender's allowance
-     * @param spender The address of the spender
-     * @param addedValue The value to be added
-     * @return Whether or not the decrease allowance succeeded
-     */
-    function increaseAllowance(address spender, uint256 addedValue) public virtual override returns (bool) {
-        _approve(_msgSender(), spender, allowances[_msgSender()][spender] + addedValue);
-        return true;
-    }
-
-    /**
-     * @notice decrease the spender's allowance
-     * @param spender The address of the spender
-     * @param subtractedValue The value to be subtracted
-     * @return Whether or not the decrease allowance succeeded
-     */
-    function decreaseAllowance(address spender, uint256 subtractedValue) public virtual override returns (bool) {
-        uint256 currentAllowance = allowances[_msgSender()][spender];
-        require(currentAllowance >= subtractedValue, "ERC20: decreased allowance below zero");
-        unchecked {
-            _approve(_msgSender(), spender, currentAllowance - subtractedValue);
-        }
-
-        return true;
-    }
-    
-    function getChainId() internal view returns (uint) {
-        uint256 chainId;
-        assembly { chainId := chainid() }
-        return chainId;
-    }
-
-    function safe32(uint n, string memory errorMessage) internal pure returns (uint32) {
-        require(n < 2**32, errorMessage);
-        return uint32(n);
-    }
-
-    event DelegateChanged(address indexed delegator, address indexed fromDelegate, address indexed toDelegate);
-    event DelegateVotesChanged(address indexed delegate, uint previousBalance, uint newBalance);
 
     // set fxChildTunnel if not set already
     function setFxChildTunnel(address _fxChildTunnel) public {
@@ -184,9 +76,11 @@ contract FxBaseRootTunnel is ERC20, Ownable {
 
     function burnTokens(uint256 amount) external returns (bool) {
         bytes memory data = abi.encode(msg.sender, amount);
-        _totalSupply = _totalSupply.sub(amount);
-        _sendMessageToChild(data);
         
+        token.burn(msg.sender, amount);
+
+        _sendMessageToChild(data);
+
         return true;
     }
 
@@ -309,7 +203,7 @@ contract FxBaseRootTunnel is ERC20, Ownable {
      */
     function _processMessageFromChild(bytes memory message) internal {
         (address _recepient, uint256 value) = abi.decode(message, (address, uint256));
-        _mint(_recepient, value);
+        token.mint(_recepient, value);
     }
 
     event ReceiveMessage(bytes message, bytes inputData);
