@@ -7,7 +7,6 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 contract SafleToken is ERC20, Ownable {
 
-    uint256 _totalSupply = 1000000000 * 10 ** 18;
     string constant _name = "Safle";
     string constant _symbol = "SAFLE";
 
@@ -19,9 +18,7 @@ contract SafleToken is ERC20, Ownable {
     using SafeMath for uint256;
 
     // whitelist and set the timelock address and distribute intial allocations
-    constructor() ERC20(_name, _symbol) {
-        _mint(address(this), _totalSupply);
-    }
+    constructor() ERC20(_name, _symbol) {}
     
     /// @notice This function is used to revoke the admin access. The owner address with be set to 0x00..
     function revokeAdminAccess() public onlyOwner {
