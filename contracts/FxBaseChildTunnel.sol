@@ -50,7 +50,7 @@ contract FxBaseChildTunnel is IFxMessageProcessor {
         fxRootTunnel = _fxRootTunnel;
     }
 
-    function lock(uint256 amount) public returns (bool) {
+    function withdraw(uint256 amount) public returns (bool) {
         bytes memory accountRef = abi.encode(msg.sender, amount);
         // Pull token from owner to bridge contract (owner must set approval before calling lock)
         // using msg.sender, the owner must call lock, but we can make delegated transfers with sender
