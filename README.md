@@ -21,6 +21,7 @@
 2. The user can now lock the tokens with the FxBaseChildTunnel using the `withdraw` function with the amount of tokens as the parameter
 
 3. The locked tokens can be received in the ETH chain by using the function `receiveMessage()` in the FxBaseRootTunnel contract. The input to be passed can be fetched from [this](https://apis.matic.network/api/v1/mumbai/exit-payload/{{transactionHash}}?eventSignature=0x8c5261668696ce22758910d05bab8f186d6eb247ceac2af2e82c7dc17669b036) API. Replace the transaction hash with the hash of the withdraw function transaction.
+For Mainnet, [this](https://apis.matic.network/api/v1/matic/exit-payload/{{transactionHash}}?eventSignature=0x8c5261668696ce22758910d05bab8f186d6eb247ceac2af2e82c7dc17669b036) api can be used.
 
 4. Once the `receiveMessage()` is called and executed successfully, the user's balance will be updated and can be verified using the `balanceOf()` function of the ETH contract.
 
