@@ -52,8 +52,8 @@ contract FxBaseChildTunnel is IFxMessageProcessor {
 
     function withdraw(uint256 amount) public returns (bool) {
         bytes memory accountRef = abi.encode(msg.sender, amount);
-        // Pull token from owner to bridge contract (owner must set approval before calling lock)
-        // using msg.sender, the owner must call lock, but we can make delegated transfers with sender
+        // Pull token from owner to bridge contract (owner must set approval before calling withdraw)
+        // using msg.sender, the owner must call withdraw, but we can make delegated transfers with sender
         // address as parameter.
         require(_token.transferFrom(msg.sender, address(this), amount), "Failed to burn");
         _sendMessageToRoot(accountRef);
