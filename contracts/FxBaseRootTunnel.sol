@@ -74,7 +74,7 @@ contract FxBaseRootTunnel {
         fxChildTunnel = _fxChildTunnel;
     }
 
-    function burnTokens(uint256 amount) external returns (bool) {
+    function deposit(uint256 amount) external returns (bool) {
         bytes memory data = abi.encode(msg.sender, amount);
         
         token.burn(msg.sender, amount);
