@@ -3,20 +3,12 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-
-// IFxMessageProcessor represents interface to process message
-interface IFxMessageProcessor {
-    function processMessageFromRoot(
-        uint256 stateId,
-        address rootMessageSender,
-        bytes calldata data
-    ) external;
-}
+import "@openzeppelin/contracts/access/Ownable.sol";
 
 /**
  * @notice Mock child tunnel contract to receive and send message from L2
  */
-contract FxBaseChildTunnel is IFxMessageProcessor {
+contract FxBaseChildTunnel is Ownable {
     // MessageTunnel on L1 will get data from this event
     event MessageSent(bytes message);
 
@@ -45,12 +37,12 @@ contract FxBaseChildTunnel is IFxMessageProcessor {
     }
 
     // set fxRootTunnel if not set already
-    function setFxRootTunnel(address _fxRootTunnel) external {
+    function setFxRootTunnel(address _fxRootTunnel) external onlyOwner {
         require(fxRootTunnel == address(0x0), "FxBaseChildTunnel: ROOT_TUNNEL_ALREADY_SET");
         fxRootTunnel = _fxRootTunnel;
     }
 
-    function withdraw(uint256 amount) public returns (bool) {
+    function withdraw(uint256 amount) public payable returns (bool) {
         bytes memory accountRef = abi.encode(msg.sender, amount);
         // Pull token from owner to bridge contract (owner must set approval before calling withdraw)
         // using msg.sender, the owner must call withdraw, but we can make delegated transfers with sender
@@ -65,7 +57,7 @@ contract FxBaseChildTunnel is IFxMessageProcessor {
         uint256 stateId,
         address rootMessageSender,
         bytes calldata data
-    ) validateSender(rootMessageSender) external override {
+    ) validateSender(rootMessageSender) external payable {
         require(msg.sender == fxChild, "FxBaseChildTunnel: INVALID_SENDER");
         _processMessageFromRoot(stateId, rootMessageSender, data);
     }

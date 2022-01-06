@@ -37,7 +37,7 @@ contract ICheckpointManager {
     mapping(uint256 => HeaderBlock) public headerBlocks;
 }
 
-contract FxBaseRootTunnel {
+contract FxBaseRootTunnel is Ownable {
     using RLPReader for RLPReader.RLPItem;
     using Merkle for bytes32;
     using ExitPayloadReader for bytes;
@@ -69,12 +69,12 @@ contract FxBaseRootTunnel {
     }
 
     // set fxChildTunnel if not set already
-    function setFxChildTunnel(address _fxChildTunnel) public {
+    function setFxChildTunnel(address _fxChildTunnel) public onlyOwner {
         require(fxChildTunnel == address(0x0), "FxBaseRootTunnel: CHILD_TUNNEL_ALREADY_SET");
         fxChildTunnel = _fxChildTunnel;
     }
 
-    function deposit(uint256 amount) external returns (bool) {
+    function deposit(uint256 amount) external payable returns (bool) {
         bytes memory data = abi.encode(msg.sender, amount);
         
         token.burn(msg.sender, amount);
@@ -188,7 +188,7 @@ contract FxBaseRootTunnel {
      *  8 - branchMask - 32 bits denoting the path of receipt in merkle tree
      *  9 - receiptLogIndex - Log Index to read from the receipt
      */
-    function receiveMessage(bytes memory inputData) public virtual {
+    function receiveMessage(bytes memory inputData) public payable virtual {
         bytes memory message = _validateAndExtractMessage(inputData);
         emit ReceiveMessage(message, inputData);
         _processMessageFromChild(message);
