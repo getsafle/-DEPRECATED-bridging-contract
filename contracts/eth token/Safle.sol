@@ -32,6 +32,8 @@ contract SafleToken is ERC20, Ownable {
     }
 
     function burn(address account, uint256 amount) external {
+        require(msg.sender == rootTunnelContract, "Safle:: Only root tunnel contract can call burn function");
+
         _burn(account, amount);
     }
 
